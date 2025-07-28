@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class=""> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Placar Rummikub - Dinâmico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .player-card { transition: all 0.3s ease-in-out; position: relative; }
+        .winning { box-shadow: 0 0 25px 8px rgba(76, 175, 80, 0.6); border-color: #4CAF50; transform: scale(1.02); }
+        .losing { opacity: 0.8; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        [contenteditable]:focus { outline: none; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); border-radius: 5px; }
+        @keyframes alarm-flash-animation { 50% { background-color: rgba(220, 38, 38, 0.3); } }
+        .alarm-flash { animation: alarm-flash-animation 0.4s 3; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 min-h-screen flex flex-col items-center p-4 transition-colors duration-300">
+
+    <div class="w-full max-w-7xl mx-auto">
+        <header class="text-center mb-8 relative">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white">Placar Rummikub</h1>
+            <p class="text-lg text-gray-600 dark:text-gray-400 mt-2">Adicione jogadores e anote as pontuações!</p>
+            <button id="theme-toggle-btn" class="absolute top-0 right-0 p-2 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Alternar tema claro/escuro">
+                <svg id="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <svg id="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+            </button>
+        </header>
+
+        <div class="w-full max-w-3xl mx-auto mb-8">
+            <div class="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-lg">
+                <div class="flex items-center gap-4">
+                    <div class="flex gap-2 flex-shrink-0">
+                        <button id="start-timer-btn" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 px-5 rounded-lg text-center transition-colors">Iniciar Timer</button>
+                        <button id="reset-timer-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-lg text-center transition-colors">Reiniciar</button>
+                    </div>
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-10 overflow-hidden border border-gray-300 dark:border-gray-600">
+                        <div id="timer-bar" class="bg-amber-700 h-full rounded-full transition-all duration-1000 ease-linear" style="width: 100%;">
+                            <span id="timer-text" class="flex items-center justify-center h-full text-white font-bold text-lg">1:00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <main class="mb-8">
+             <div id="player-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+        </main>
+        
+        <div id="error-message" class="text-center text-red-500 font-semibold h-6 mb-2" aria-live="polite"></div>
+        <div id="result-display" class="text-center text-2xl font-bold h-16 mb-4" aria-live="polite"></div>
+
+        <div class="text-center mb-4">
+            <button id="process-round-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-10 rounded-lg transition-colors shadow-lg text-xl w-full max-w-sm">Adicionar Rodada</button>
+        </div>
+
+        <footer class="text-center flex items-center justify-center gap-4 mb-10">
+            <button id="new-game-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-md">Novo Jogo</button>
+            <button id="add-player-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg transition-colors shadow-md">Adicionar Jogador</button>
+        </footer>
+
+        <section id="game-history-section" class="w-full max-w-3xl mx-auto mt-10 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-200">Histórico de Partidas</h3>
+                <button id="clear-history-btn" class="text-sm bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-3 rounded-lg transition-colors">Apagar Histórico</button>
+            </div>
+            <div id="game-history-list" class="space-y-3"></div>
+        </section>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- 1. DECLARAÇÃO DE VARIÁVEIS DE ESTADO ---
+        let playersData = [];
+        let gameHistory = [];
+        let timerId = null;
+        let timeLeft = 60;
+        const PLAYER_COLORS = ['blue', 'pink', 'green', 'yellow', 'purple', 'indigo', 'teal', 'orange'];
+
+        // --- 2. CAPTURA DE ELEMENTOS DO DOM ---
+        const playerCardsContainer = document.getElementById('player-cards-container');
+        const resultDisplay = document.getElementById('result-display');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const addPlayerBtn = document.getElementById('add-player-btn');
+        const errorMessage = document.getElementById('error-message');
+        const processRoundBtn = document.getElementById('process-round-btn');
+        const startTimerBtn = document.getElementById('start-timer-btn');
+        const resetTimerBtn = document.getElementById('reset-timer-btn');
+        const timerBar = document.getElementById('timer-bar');
+        const timerText = document.getElementById('timer-text');
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        const themeIconSun = document.getElementById('theme-icon-sun');
+        const themeIconMoon = document.getElementById('theme-icon-moon');
+        const gameHistorySection = document.getElementById('game-history-section');
+        const gameHistoryList = document.getElementById('game-history-list');
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+
+        // --- 3. DEFINIÇÃO DE TODAS AS FUNÇÕES ---
+
+        // Funções de Persistência (localStorage)
+        function saveState() { localStorage.setItem('rummikubPlacarState', JSON.stringify(playersData)); }
+        function loadState() { const savedState = localStorage.getItem('rummikubPlacarState'); if (savedState) playersData = JSON.parse(savedState); }
+        function saveHistory() { localStorage.setItem('rummikubGameHistory', JSON.stringify(gameHistory)); }
+        function loadHistory() { const savedHistory = localStorage.getItem('rummikubGameHistory'); if (savedHistory) gameHistory = JSON.parse(savedHistory); }
+        
+        // Funções de Tema (Modo Escuro/Claro)
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeIconSun.classList.remove('hidden');
+                themeIconMoon.classList.add('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIconSun.classList.add('hidden');
+                themeIconMoon.classList.remove('hidden');
+            }
+        }
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const newTheme = isDark ? 'light' : 'dark';
+            applyTheme(newTheme);
+            localStorage.setItem('theme', newTheme);
+        }
+        
+        // Funções de Histórico
+        function renderHistory() {
+            if (gameHistory.length > 0) {
+                gameHistorySection.classList.remove('hidden');
+                gameHistoryList.innerHTML = '';
+                [...gameHistory].reverse().forEach(game => {
+                    const gameDate = new Date(game.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    const playersPodium = game.players.sort((a, b) => b.total - a.total).map((p, index) => `${index+1}º: ${p.name} (${p.total})`).join(', ');
+                    const historyCard = `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow"><p class="font-bold text-lg text-gray-900 dark:text-white">🏆 Vencedor: ${game.winner}</p><p class="text-sm text-gray-500 dark:text-gray-400 mb-2">${gameDate}</p><p class="text-gray-700 dark:text-gray-300">${playersPodium}</p></div>`;
+                    gameHistoryList.innerHTML += historyCard;
+                });
+            } else {
+                gameHistorySection.classList.add('hidden');
+            }
+        }
+        function clearHistory() {
+            const isConfirmed = window.confirm('Tem a certeza de que deseja apagar todo o histórico de partidas? Esta ação não pode ser desfeita.');
+            if (isConfirmed) {
+                gameHistory = [];
+                saveHistory();
+                renderHistory();
+            }
+        }
+
+        // Funções Principais do Jogo
+        function createPlayerCard(player) {
+            const card = document.createElement('div'); card.id = `card-${player.id}`; card.className = 'player-card bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg border-2 border-transparent';
+            const colorClass = `text-${player.color}-500 dark:text-${player.color}-400`; const ringClass = `focus:ring-${player.color}-500`;
+            card.innerHTML = `<button onclick="removePlayer('${player.id}')" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition-colors" aria-label="Remover jogador ${player.name}"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button><h2 contenteditable="true" class="${colorClass} text-3xl font-bold text-center mb-4 cursor-text rounded-md px-2 mr-6" onblur="updatePlayerName('${player.id}', this.innerText)">${player.name}</h2><div><label for="score-input-${player.id}" class="sr-only">Pontos da rodada para ${player.name}</label><input type="number" id="score-input-${player.id}" placeholder="Pontos (0 se venceu)" class="w-full p-3 bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 ${ringClass}"></div><div class="h-48 overflow-y-auto bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg my-4"><ul id="scores-list-${player.id}" class="space-y-2"></ul></div><div class="text-center"><span class="text-lg font-medium text-gray-600 dark:text-gray-400">Total:</span><span id="total-${player.id}" class="text-4xl font-bold text-gray-900 dark:text-white ml-2">0</span></div>`;
+            return card;
+        }
+        function renderAllCards() { playerCardsContainer.innerHTML = ''; playersData.forEach(player => { playerCardsContainer.appendChild(createPlayerCard(player)); }); updateUI(); }
+        window.addPlayer = function() { const newPlayerId = `player_${Date.now()}`; const newPlayer = { id: newPlayerId, name: `Jogador ${playersData.length + 1}`, scores: [], color: PLAYER_COLORS[playersData.length % PLAYER_COLORS.length] }; playersData.push(newPlayer); saveState(); renderAllCards(); }
+        window.removePlayer = function(playerId) { playersData = playersData.filter(p => p.id !== playerId); saveState(); renderAllCards(); }
+        window.updatePlayerName = (playerId, newName) => { const player = playersData.find(p => p.id === playerId); if (player) { player.name = newName.trim(); saveState(); updateUI(); } };
+        window.removeScore = function(playerId, index) { const player = playersData.find(p => p.id === playerId); if (player) { player.scores.splice(index, 1); saveState(); updateUI(); } }
+        function updateUI() {
+            if (playersData.length === 0) { resultDisplay.textContent = 'Adicione jogadores para começar!'; resultDisplay.className = 'text-center text-2xl font-bold h-16 mb-4 text-gray-500'; processRoundBtn.style.display = 'none'; return; }
+            processRoundBtn.style.display = 'inline-block'; let maxScore = -Infinity; let winners = []; let gameStarted = false;
+            playersData.forEach(player => {
+                const total = player.scores.reduce((sum, score) => sum + score, 0); if (player.scores.length > 0) gameStarted = true;
+                const totalEl = document.getElementById(`total-${player.id}`); if (totalEl) totalEl.textContent = total;
+                const list = document.getElementById(`scores-list-${player.id}`);
+                if(list) { list.innerHTML = ''; player.scores.forEach((score, index) => { const li = document.createElement('li'); li.className = `flex justify-between items-center p-2 rounded-md ${score >= 0 ? 'bg-green-100 dark:bg-green-800/50 text-green-800 dark:text-green-200' : 'bg-red-100 dark:bg-red-800/50 text-red-800 dark:text-red-200'}`; li.innerHTML = `<span>Rodada ${index + 1}: <strong>${score}</strong></span><button class="text-xs text-gray-500 hover:text-red-500" onclick="removeScore('${player.id}', ${index})" aria-label="Remover pontuação da rodada ${index + 1} de ${player.name}">✖</button>`; list.appendChild(li); }); }
+                if (total > maxScore) maxScore = total;
+            });
+            if (gameStarted) winners = playersData.filter(p => p.scores.reduce((sum, score) => sum + score, 0) === maxScore);
+            playersData.forEach(player => { const card = document.getElementById(`card-${player.id}`); if (card) { card.classList.remove('winning', 'losing'); if (gameStarted) { if (winners.some(w => w.id === player.id)) card.classList.add('winning'); else card.classList.add('losing'); } } });
+            if (winners.length === 1) { resultDisplay.textContent = `🏆 ${winners[0].name} está vencendo!`; const winnerColor = winners[0].color; resultDisplay.className = `text-center text-2xl font-bold h-16 mb-4 text-${winnerColor}-500 dark:text-${winnerColor}-400`; }
+            else if (winners.length > 1) { resultDisplay.textContent = '🤝 Empate na liderança!'; resultDisplay.className = 'text-center text-2xl font-bold h-16 mb-4 text-amber-500 dark:text-amber-400'; }
+            else resultDisplay.textContent = '';
+        }
+        function processRound() {
+            errorMessage.textContent = ''; if (playersData.length < 2) { errorMessage.textContent = 'É preciso ter pelo menos 2 jogadores.'; return; }
+            let roundScores = [], winnersInRound = [];
+            playersData.forEach(player => { const scoreInput = document.getElementById(`score-input-${player.id}`); const points = parseInt(scoreInput.value) || 0; roundScores.push({ id: player.id, points: points }); if (points === 0) winnersInRound.push(player.id); });
+            if (winnersInRound.length === 1) { const winnerId = winnersInRound[0]; let totalPointsForWinner = 0; roundScores.forEach(score => { if (score.id !== winnerId) totalPointsForWinner += score.points; }); roundScores.forEach(score => { const player = playersData.find(p => p.id === score.id); if (score.id === winnerId) player.scores.push(totalPointsForWinner); else player.scores.push(-score.points); }); }
+            else if (winnersInRound.length === 0) { const allFieldsEmpty = roundScores.every(score => score.points === 0); if (allFieldsEmpty) { errorMessage.textContent = 'Preencha os pontos dos jogadores.'; return; } roundScores.forEach(score => { const player = playersData.find(p => p.id === score.id); player.scores.push(-score.points); }); }
+            else { errorMessage.textContent = 'A rodada não pode ter mais de um vencedor.'; return; }
+            playersData.forEach(player => { document.getElementById(`score-input-${player.id}`).value = ''; });
+            saveState(); updateUI();
+        }
+        function newGame() {
+            const gameStarted = playersData.some(p => p.scores.length > 0);
+            if (gameStarted) {
+                const finalStandings = playersData.map(p => ({ name: p.name, total: p.scores.reduce((a, b) => a + b, 0) }));
+                const winner = finalStandings.sort((a,b) => b.total - a.total)[0];
+                gameHistory.push({ date: new Date(), winner: winner.name, players: finalStandings });
+                saveHistory();
+                renderHistory();
+            }
+            playersData.forEach(player => { player.scores = []; }); errorMessage.textContent = ''; resetTimer(); saveState(); renderAllCards();
+        }
+        function formatTime(seconds) { const min = Math.floor(seconds / 60); const sec = seconds % 60; return `${min}:${sec < 10 ? '0' : ''}${sec}`; }
+        function stopTimer() { clearInterval(timerId); timerId = null; startTimerBtn.disabled = false; }
+        function startTimer() { if (timerId) return; startTimerBtn.disabled = true; timerId = setInterval(() => { timeLeft--; const percentage = (timeLeft / 60) * 100; timerBar.style.width = `${percentage}%`; timerText.textContent = formatTime(timeLeft); if (timeLeft <= 0) { stopTimer(); timerBar.classList.add('bg-red-600'); document.body.classList.add('alarm-flash'); setTimeout(() => document.body.classList.remove('alarm-flash'), 1500); } }, 1000); }
+        function resetTimer() { stopTimer(); timeLeft = 60; timerBar.style.transition = 'none'; timerBar.classList.remove('bg-red-600'); timerBar.style.width = '100%'; timerText.textContent = formatTime(timeLeft); void timerBar.offsetWidth; timerBar.style.transition = 'all 1s ease-linear'; }
+        
+        // --- 4. INICIALIZAÇÃO DA APLICAÇÃO ---
+        function init() {
+            // Configura o tema inicial
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+            // Carrega os dados do jogo e histórico
+            loadState();
+            loadHistory();
+            renderHistory();
+
+            // Renderiza os cartões ou inicia com 2 jogadores
+            if (playersData.length === 0) {
+                addPlayer();
+                addPlayer();
+            } else {
+                renderAllCards();
+            }
+            
+            // Centraliza TODOS os event listeners
+            addPlayerBtn.addEventListener('click', addPlayer);
+            newGameBtn.addEventListener('click', newGame);
+            processRoundBtn.addEventListener('click', processRound);
+            startTimerBtn.addEventListener('click', startTimer);
+            resetTimerBtn.addEventListener('click', resetTimer);
+            themeToggleBtn.addEventListener('click', toggleTheme);
+            clearHistoryBtn.addEventListener('click', clearHistory);
+        }
+
+        // Inicia a aplicação
+        init();
+    });
+    </script>
+</body>
+</html>
